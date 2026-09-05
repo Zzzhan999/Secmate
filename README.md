@@ -56,5 +56,17 @@ uvicorn app.main:app --reload   # http://localhost:8000/api/v1/health
 | 1 | 需求分析 | ✅ 完成 |
 | 2 | 项目结构 | ✅ 完成 |
 | 3 | MVP（首页/分析页/AI 分析 API） | ✅ 完成（2026-09-05） |
-| 4 | 商业化（用户/会员/支付预留） | ⏳ 下一阶段 |
+| 4 | 商业化（用户/会员/支付预留） | ✅ 完成（2026-09-05） |
 | 5 | 优化（历史/收藏/分享/SEO/统计） | 未开始 |
+
+## 阶段4（商业化）已上线
+
+- 邮箱注册/登录（Supabase Auth，JWT 由后端本地验签），GitHub OAuth 按钮预留（需在 Supabase 配置 GitHub provider）
+- Free 5 次/天个人配额（Postgres RPC 原子扣减），Pro 200 次/天上限代码路径就绪
+- 分析历史（列表 + 详情，仅本人可见）
+- 定价页四档方案（数据来自 `GET /api/v1/plans`），支付接口预留，升级按钮「即将上线」
+- 匿名分析保持可用（IP 限流兜底，Supabase 未配置时全链路降级）
+
+**上线前需在 Supabase 完成：** SQL Editor 执行 `database/schema.sql`；Authentication → Email → 关闭 Confirm email。
+
+**新环境变量：** 后端 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_JWT_SECRET`；前端 `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`。
