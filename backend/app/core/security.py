@@ -13,13 +13,14 @@ class JwksError(Exception):
 class SupabaseTokenVerifier:
     """Supabase JWT 本地验签。
 
-    RS256/ES256：JWKS 缓存（TTL 24h），kid 未命中自动刷新一次（应对密钥轮换）。
-    HS256：SUPABASE_JWT_SECRET。
+    RS256/ES256：JWKS 缓存（TTL 24h），kid 未命中时按最小间隔刷新一次（应对密钥轮换，
+    同时防止未知 kid 引发的拉取放大）。HS256：SUPABASE_JWT_SECRET。
     校验 aud=authenticated、iss={SUPABASE_URL}/auth/v1、exp/sub 必填。
     """
 
     JWKS_PATH = "/auth/v1/.well-known/jwks.json"
     TTL_SECONDS = 24 * 3600
+    REFRESH_MIN_INTERVAL = 60.0
 
     def __init__(self, http_client: httpx.AsyncClient | None = None):
         self._http_client = http_client
@@ -45,21 +46,22 @@ class SupabaseTokenVerifier:
             raise JwksError(f"JWKS 拉取失败: HTTP {resp.status_code}")
         try:
             keys = resp.json()["keys"]
-        except (ValueError, KeyError) as exc:
+            return {k["kid"]: jwt.PyJWK(k) for k in keys if k.get("kid")}
+        except (jwt.PyJWTError, TypeError, ValueError, KeyError, AttributeError) as exc:
             raise JwksError("JWKS 响应格式异常") from exc
-        return {k["kid"]: jwt.PyJWK(k) for k in keys if k.get("kid")}
 
-    async def _key_for(self, kid: str):
+    async def _key_for(self, kid: str) -> jwt.PyJWK:
         if not self._keys or time.monotonic() - self._fetched_at > self.TTL_SECONDS:
             self._keys = await self._fetch_jwks()
             self._fetched_at = time.monotonic()
-        if kid not in self._keys:
-            # 密钥可能已轮换：刷新一次缓存再试
+        if kid not in self._keys and time.monotonic() - self._fetched_at > self.REFRESH_MIN_INTERVAL:
+            # 密钥可能已轮换：距上次拉取超过最小间隔才刷新，防止未知 kid 引发外呼放大
             self._keys = await self._fetch_jwks()
             self._fetched_at = time.monotonic()
         if kid not in self._keys:
-            raise JwksError(f"JWKS 中不存在 kid={kid}")
-        return self._keys[kid].key
+            # 未知 kid 视为无效 token（上层映射 401），而非服务端故障
+            raise jwt.InvalidKeyError(f"JWKS 中不存在 kid={kid}")
+        return self._keys[kid]
 
     async def verify(self, token: str) -> dict:
         header = jwt.get_unverified_header(token)

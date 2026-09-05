@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 import time
 
 import httpx
@@ -142,10 +143,13 @@ def test_jwks_cached_within_ttl(monkeypatch):
 def test_jwks_kid_miss_triggers_refresh(monkeypatch):
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     verifier, calls = _verifier_with_jwks(monkeypatch, [[], [_rsa_jwk(key)]])
+    # 预热缓存：第一次拉取返回空 JWKS，并把拉取时间拨回超过刷新阈值
+    verifier._keys = asyncio.run(verifier._fetch_jwks())
+    verifier._fetched_at = time.monotonic() - verifier.REFRESH_MIN_INTERVAL - 1
     token = jwt.encode(_payload(), key, algorithm="RS256", headers={"kid": "rsa-kid"})
     payload = asyncio.run(verifier.verify(token))
     assert payload["sub"] == "user-123"
-    assert calls["count"] == 2  # 首次未命中后自动刷新一次
+    assert calls["count"] == 2  # 预热 1 次 + 未命中后刷新 1 次
 
 
 def test_jwks_fetch_http_error_raises_jwks_error(monkeypatch):
@@ -176,3 +180,24 @@ def test_hs256_without_secret_raises_jwks_error(monkeypatch):
     token = jwt.encode(_payload(), "whatever", algorithm="HS256")
     with pytest.raises(JwksError):
         asyncio.run(SupabaseTokenVerifier().verify(token))
+
+
+def test_jwks_kid_miss_within_interval_does_not_refetch(monkeypatch):
+    # 防拉取放大：缓存新鲜时未知 kid 不再触发外呼
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    verifier, calls = _verifier_with_jwks(monkeypatch, [[_rsa_jwk(key)]])
+    token = jwt.encode(_payload(), key, algorithm="RS256", headers={"kid": "other-kid"})
+    with pytest.raises(jwt.InvalidKeyError):
+        asyncio.run(verifier.verify(token))
+    assert calls["count"] == 1
+
+
+def test_alg_key_type_mismatch_rejected(monkeypatch):
+    # 头声明 RS256 但 kid 指向 EC 密钥：必须报 PyJWTError（401），而非裸 TypeError（500）
+    key = ec.generate_private_key(ec.SECP256R1())
+    verifier, _ = _verifier_with_jwks(monkeypatch, [[_ec_jwk(key)]])
+    token = jwt.encode(_payload(), key, algorithm="ES256", headers={"kid": "ec-kid"})
+    header, payload, sig = token.split(".")
+    forged = ".".join([_b64u(json.dumps({"alg": "RS256", "typ": "JWT", "kid": "ec-kid"}).encode()), payload, sig])
+    with pytest.raises(jwt.PyJWTError):
+        asyncio.run(verifier.verify(forged))
