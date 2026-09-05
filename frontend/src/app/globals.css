@@ -1,3 +1,4 @@
+@import "highlight.js/styles/github-dark.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "tailwindcss";
@@ -122,5 +123,62 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  /* 分析结果 Markdown 排版；代码块固定深色底，与 highlight.js 深色主题一致 */
+  .markdown-body {
+    @apply text-sm leading-relaxed text-foreground;
+  }
+  .markdown-body h2 {
+    @apply mt-8 mb-3 border-b border-border pb-1.5 text-lg font-semibold first:mt-0;
+  }
+  .markdown-body h3 {
+    @apply mt-6 mb-2 text-base font-semibold;
+  }
+  .markdown-body p {
+    @apply my-3;
+  }
+  .markdown-body ul,
+  .markdown-body ol {
+    @apply my-3 pl-6;
+  }
+  .markdown-body ul {
+    @apply list-disc;
+  }
+  .markdown-body ol {
+    @apply list-decimal;
+  }
+  .markdown-body li {
+    @apply my-1;
+  }
+  .markdown-body code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-[0.85em];
+  }
+  .markdown-body pre {
+    @apply my-4 overflow-x-auto rounded-lg border border-border bg-zinc-950 p-4 text-[13px] leading-relaxed;
+  }
+  .markdown-body pre code {
+    @apply bg-transparent p-0 text-inherit;
+  }
+  .markdown-body table {
+    @apply my-4 w-full border-collapse text-sm;
+  }
+  .markdown-body th,
+  .markdown-body td {
+    @apply border border-border px-3 py-1.5 text-left;
+  }
+  .markdown-body th {
+    @apply bg-muted font-medium;
+  }
+  .markdown-body blockquote {
+    @apply my-4 border-l-2 border-primary/40 pl-4 text-muted-foreground;
+  }
+  .markdown-body a {
+    @apply text-primary underline underline-offset-4;
+  }
+  .markdown-body hr {
+    @apply my-6 border-border;
   }
 }
