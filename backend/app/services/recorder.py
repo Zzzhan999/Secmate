@@ -13,16 +13,18 @@ async def record_analysis(
     model: str,
     tokens_in: int,
     tokens_out: int,
+    user_id: str | None = None,
     http_client: httpx.AsyncClient | None = None,
 ) -> int | None:
-    """匿名分析落库（PostgREST + service_role，可绕过 RLS）。未配置 Supabase 时跳过，保证本地可无库运行。"""
+    """分析落库（PostgREST + service_role，可绕过 RLS）。user_id 为空=匿名分析。
+    未配置 Supabase 时跳过，保证本地可无库运行。"""
     s = get_settings()
     if not s.supabase_url or not s.supabase_service_role_key:
         print("[SecMate] Supabase 未配置，跳过分析落库")
         return None
 
     payload = {
-        "user_id": None,
+        "user_id": user_id,
         "input_type": input_type,
         "input_text": input_text,
         "result_md": result_md,

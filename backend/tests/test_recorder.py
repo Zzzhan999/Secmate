@@ -67,3 +67,24 @@ def test_db_failure_returns_none(monkeypatch):
         model="deepseek-chat", tokens_in=1, tokens_out=1, http_client=client,
     ))
     assert result is None
+
+
+def test_posts_user_id_when_logged_in(monkeypatch):
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(201, json=[{"id": 99}])
+
+    monkeypatch.setenv("SUPABASE_URL", "https://xyzcompany.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key-123")
+    get_settings.cache_clear()
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    result = asyncio.run(record_analysis(
+        input_type="general", input_text="hi", result_md="ok",
+        model="deepseek-chat", tokens_in=1, tokens_out=1,
+        user_id="user-123", http_client=client,
+    ))
+    assert result == 99
+    assert captured["body"]["user_id"] == "user-123"
