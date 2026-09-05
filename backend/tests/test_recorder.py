@@ -10,8 +10,9 @@ from app.services.recorder import record_analysis
 
 @pytest.fixture(autouse=True)
 def clean_settings(monkeypatch):
-    monkeypatch.delenv("SUPABASE_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    # setenv 置空（而非 delenv）：避免 pydantic-settings 回退读取 .env 导致测试外呼真实 Supabase
+    monkeypatch.setenv("SUPABASE_URL", "")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
