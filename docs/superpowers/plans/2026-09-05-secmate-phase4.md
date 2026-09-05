@@ -449,13 +449,13 @@ async def verify_supabase_token(token: str) -> dict:
 
 Run: `cd backend && .venv/Scripts/python.exe -m pytest tests/test_security.py -q`
 
-Expected: 14 passed。
+Expected: 13 passed（测试函数实际为 13 个）。
 
 - [ ] **Step 5: 全量回归**
 
 Run: `cd backend && .venv/Scripts/python.exe -m pytest -q`
 
-Expected: 全部通过（71 个左右）。
+Expected: 全部通过（71 个）。
 
 - [ ] **Step 6: Commit**
 
