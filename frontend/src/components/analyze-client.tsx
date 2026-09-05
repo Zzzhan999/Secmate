@@ -7,8 +7,9 @@ import { useCallback, useRef, useState } from "react";
 import { AnalysisInput } from "@/components/analysis-input";
 import { AnalysisResult } from "@/components/analysis-result";
 import { SiteHeader } from "@/components/site-header";
+import { UpgradeCard } from "@/components/upgrade-card";
 import { Button } from "@/components/ui/button";
-import { ApiError, streamAnalysis } from "@/lib/api";
+import { ApiError, notifyQuotaRefresh, streamAnalysis } from "@/lib/api";
 import { isInputType, type InputType } from "@/lib/input-classifier";
 
 type Status = "idle" | "streaming" | "done" | "error";
@@ -22,10 +23,12 @@ export function AnalyzeClient() {
   const [result, setResult] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const handleAnalyze = useCallback(
     async (input: string) => {
+      setQuotaExceeded(false);
       setResult("");
       setError(null);
       setStatus("streaming");
@@ -38,7 +41,10 @@ export function AnalyzeClient() {
           {
             onMeta: (t) => setDetectedType(t),
             onDelta: (c) => setResult((prev) => prev + c),
-            onDone: () => setStatus("done"),
+            onDone: () => {
+              setStatus("done");
+              notifyQuotaRefresh();
+            },
             onError: (_code, message) => {
               setError(message);
               setStatus("error");
@@ -48,8 +54,13 @@ export function AnalyzeClient() {
         );
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
-          setError(err instanceof ApiError ? err.message : "网络错误，请稍后重试");
-          setStatus("error");
+          if (err instanceof ApiError && err.code === "quota_exceeded") {
+            setQuotaExceeded(true);
+            setStatus("idle");
+          } else {
+            setError(err instanceof ApiError ? err.message : "网络错误，请稍后重试");
+            setStatus("error");
+          }
         }
       }
     },
@@ -77,6 +88,7 @@ export function AnalyzeClient() {
             <span>{error}</span>
           </div>
         )}
+        {quotaExceeded && <UpgradeCard />}
         <AnalysisInput
           onAnalyze={handleAnalyze}
           streaming={status === "streaming"}
