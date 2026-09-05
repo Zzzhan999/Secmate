@@ -89,3 +89,18 @@ def test_http_error_raises_unavailable(monkeypatch):
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     with pytest.raises(SupabaseUnavailable):
         asyncio.run(select("profiles", http_client=client))
+
+
+def test_200_non_json_body_raises_unavailable(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>gateway error</html>")
+
+    monkeypatch.setenv("SUPABASE_URL", "https://xyzcompany.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc-key")
+    get_settings.cache_clear()
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    with pytest.raises(SupabaseUnavailable):
+        asyncio.run(select("profiles", http_client=client))
+    with pytest.raises(SupabaseUnavailable):
+        asyncio.run(rpc("check_and_increment_usage", {"p_user_id": "u1"}, http_client=client))

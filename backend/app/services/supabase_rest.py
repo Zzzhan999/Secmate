@@ -1,3 +1,6 @@
+import json
+from typing import Any
+
 import httpx
 
 from app.core.config import get_settings
@@ -47,6 +50,14 @@ async def _request(
     return resp
 
 
+def _parse_json(resp: httpx.Response) -> Any:
+    """解析响应 JSON；非 JSON 响应视为 Supabase 异常，统一走 503 契约。"""
+    try:
+        return resp.json()
+    except json.JSONDecodeError as exc:
+        raise SupabaseUnavailable(f"Supabase 响应不是有效 JSON: {exc}") from exc
+
+
 async def select(
     table: str,
     *,
@@ -57,7 +68,7 @@ async def select(
     """GET /rest/v1/{table}?select=... 返回行数组（service_role 绕过 RLS）。"""
     all_params = {"select": select_fields, **(params or {})}
     resp = await _request("GET", f"/{table}", params=all_params, http_client=http_client)
-    return resp.json()
+    return _parse_json(resp)
 
 
 async def rpc(
@@ -70,4 +81,4 @@ async def rpc(
     resp = await _request("POST", f"/rpc/{fn_name}", json_body=args, http_client=http_client)
     if not resp.content:
         return []
-    return resp.json()
+    return _parse_json(resp)
