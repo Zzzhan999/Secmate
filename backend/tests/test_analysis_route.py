@@ -203,3 +203,75 @@ def test_supabase_down_returns_503(monkeypatch, logged_in_user):
     resp = client.post("/api/v1/analysis", json={"input_text": "什么是 SQL 注入？"})
     assert resp.status_code == 503
     assert resp.json()["detail"]["code"] == "supabase_unavailable"
+
+
+def test_quota_exceeded_pro_message(monkeypatch, logged_in_user):
+    _stub_usage(monkeypatch, resolve_result="pro", increment_result=False)
+
+    resp = client.post("/api/v1/analysis", json={"input_text": "什么是 SQL 注入？"})
+    assert resp.status_code == 429
+    assert resp.json()["detail"]["code"] == "quota_exceeded"
+    assert "200 次/天" in resp.json()["detail"]["message"]
+
+
+def test_increment_failure_returns_503(monkeypatch, logged_in_user):
+    async def fake_resolve(user_id):
+        return "free"
+
+    async def boom_increment(user_id, limit):
+        raise SupabaseUnavailable("down")
+
+    monkeypatch.setattr(analysis_module, "resolve_plan", fake_resolve)
+    monkeypatch.setattr(analysis_module, "check_and_increment", boom_increment)
+
+    resp = client.post("/api/v1/analysis", json={"input_text": "什么是 SQL 注入？"})
+    assert resp.status_code == 503
+    assert resp.json()["detail"]["code"] == "supabase_unavailable"
+
+
+def test_quota_consumed_before_stream_error(monkeypatch, logged_in_user):
+    calls: list = []
+
+    async def fake_resolve(user_id):
+        return "free"
+
+    async def fake_increment(user_id, limit):
+        calls.append("increment")
+        return True
+
+    monkeypatch.setattr(analysis_module, "resolve_plan", fake_resolve)
+    monkeypatch.setattr(analysis_module, "check_and_increment", fake_increment)
+
+    transport, _ = make_streaming_transport([], status=500)
+    provider = OpenAICompatProvider(
+        base_url="https://mock.local/v1", api_key="k", model="deepseek-chat",
+        http_client=httpx.AsyncClient(transport=transport),
+    )
+    monkeypatch.setattr(analysis_module, "get_provider", lambda: provider)
+
+    resp = client.post("/api/v1/analysis", json={"input_text": "什么是 SQL 注入？"})
+    assert resp.status_code == 200
+    events = parse_sse(resp.text)
+    assert events[-1][0] == "error"
+    assert calls == ["increment"]  # 流开始前已原子扣减，流中途失败不退
+
+
+def test_safety_refusal_consumes_no_quota(monkeypatch, logged_in_user):
+    calls: list = []
+
+    async def fake_resolve(user_id):
+        return "free"
+
+    async def fake_increment(user_id, limit):
+        calls.append("increment")
+        return True
+
+    monkeypatch.setattr(analysis_module, "resolve_plan", fake_resolve)
+    monkeypatch.setattr(analysis_module, "check_and_increment", fake_increment)
+
+    resp = client.post("/api/v1/analysis", json={
+        "input_text": "我的手机号 13812341234，帮忙分析这个报错",
+    })
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "refused"
+    assert calls == []  # 拒绝输入不消耗配额

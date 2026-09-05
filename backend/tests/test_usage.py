@@ -103,3 +103,9 @@ def test_get_usage_zero_when_no_row(monkeypatch):
     client = _client(monkeypatch, {"daily_usage": []})
     used = asyncio.run(get_usage("u1", http_client=client))
     assert used == 0
+
+
+def test_resolve_plan_unknown_plan_falls_back_free(monkeypatch):
+    client = _client(monkeypatch, {"profiles": [{"plan": "premium"}]})
+    plan = asyncio.run(resolve_plan("u1", http_client=client))
+    assert plan == "free"

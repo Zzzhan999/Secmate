@@ -65,7 +65,7 @@ async def analyze(
             ) from exc
         if not incremented:
             message = (
-                "今日分析次数已达上限（Pro 200 次/天），请明天再试。"
+                f"今日分析次数已达上限（Pro {limit} 次/天），请明天再试。"
                 if plan == "pro"
                 else "今日免费额度已用完，升级 Pro 解锁更多次数。"
             )

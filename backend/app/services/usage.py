@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 
+from app.services.plans import PLAN_LIMITS
 from app.services.supabase_rest import rpc, select
 
 
@@ -14,6 +15,8 @@ async def resolve_plan(user_id: str, http_client=None) -> str:
         http_client=http_client,
     )
     plan = rows[0].get("plan", "free") if rows else "free"
+    if plan not in PLAN_LIMITS:
+        plan = "free"  # 数据库异常值兜底为 free，避免上层 PLAN_LIMITS KeyError
     if plan != "pro":
         return plan
     subs = await select(
