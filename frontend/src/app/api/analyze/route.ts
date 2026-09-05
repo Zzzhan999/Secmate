@@ -17,15 +17,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const upstreamHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Forwarded-For":
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "127.0.0.1",
+  };
+  const auth = request.headers.get("authorization");
+  if (auth) upstreamHeaders["Authorization"] = auth;
+
   const upstream = await fetch(`${BACKEND_API_URL}/api/v1/analysis`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Forwarded-For":
-        request.headers.get("x-forwarded-for") ||
-        request.headers.get("x-real-ip") ||
-        "127.0.0.1",
-    },
+    headers: upstreamHeaders,
     body: JSON.stringify(body),
     signal: request.signal,
   });
