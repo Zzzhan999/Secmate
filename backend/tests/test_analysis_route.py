@@ -5,10 +5,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.api.routes.analysis as analysis_module
+from app.api.deps import UserIdentity, get_optional_user
 from app.core.config import get_settings
 from app.main import app
 from app.providers.openai_compat import OpenAICompatProvider
 from app.services.rate_limiter import reset_limiter
+from app.services.supabase_rest import SupabaseUnavailable
 
 client = TestClient(app)
 
@@ -57,6 +59,13 @@ def fresh_limiter(monkeypatch):
     yield
     reset_limiter()
     get_settings.cache_clear()
+
+
+@pytest.fixture
+def logged_in_user():
+    app.dependency_overrides[get_optional_user] = lambda: UserIdentity(id="user-123", email="a@b.c")
+    yield
+    app.dependency_overrides.clear()
 
 
 def test_analysis_streams_meta_delta_done(monkeypatch):
@@ -132,3 +141,65 @@ def test_provider_error_emits_error_event(monkeypatch):
 def test_too_long_input_rejected():
     resp = client.post("/api/v1/analysis", json={"input_text": "a" * 8001})
     assert resp.status_code == 422
+
+
+def _stub_usage(monkeypatch, *, resolve_result="free", increment_result=True):
+    async def fake_resolve(user_id):
+        return resolve_result
+
+    async def fake_increment(user_id, limit):
+        return increment_result
+
+    monkeypatch.setattr(analysis_module, "resolve_plan", fake_resolve)
+    monkeypatch.setattr(analysis_module, "check_and_increment", fake_increment)
+
+
+def test_logged_in_skips_ip_limit_and_records_user_id(monkeypatch, logged_in_user):
+    monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "1")
+    get_settings.cache_clear()
+    reset_limiter()
+
+    transport, _ = make_streaming_transport(["ok"])
+    provider = OpenAICompatProvider(
+        base_url="https://mock.local/v1", api_key="k", model="deepseek-chat",
+        http_client=httpx.AsyncClient(transport=transport),
+    )
+    monkeypatch.setattr(analysis_module, "get_provider", lambda: provider)
+    _stub_usage(monkeypatch)
+    recorded: dict = {}
+
+    async def fake_record(**kwargs):
+        recorded.update(kwargs)
+        return 7
+
+    monkeypatch.setattr(analysis_module, "record_analysis", fake_record)
+
+    payload = {"input_text": "TCP 三次握手的过程是怎样的？"}
+    first = client.post("/api/v1/analysis", json=payload)
+    second = client.post("/api/v1/analysis", json=payload)
+    # 登录用户跳过 IP 限流（limit=1 也放行）
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert recorded["user_id"] == "user-123"
+    assert parse_sse(first.text)[-1][0] == "done"
+
+
+def test_quota_exceeded_returns_429_json(monkeypatch, logged_in_user):
+    _stub_usage(monkeypatch, increment_result=False)
+
+    resp = client.post("/api/v1/analysis", json={"input_text": "什么是 SQL 注入？"})
+    assert resp.status_code == 429
+    assert resp.json()["detail"]["code"] == "quota_exceeded"
+    assert "升级" in resp.json()["detail"]["message"]
+    assert resp.headers["content-type"].startswith("application/json")  # 非 SSE
+
+
+def test_supabase_down_returns_503(monkeypatch, logged_in_user):
+    async def boom(user_id):
+        raise SupabaseUnavailable("down")
+
+    monkeypatch.setattr(analysis_module, "resolve_plan", boom)
+
+    resp = client.post("/api/v1/analysis", json={"input_text": "什么是 SQL 注入？"})
+    assert resp.status_code == 503
+    assert resp.json()["detail"]["code"] == "supabase_unavailable"
