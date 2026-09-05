@@ -22,9 +22,11 @@ class Settings(BaseSettings):
     # 限流：每 IP 每分钟允许的分析请求数
     rate_limit_per_minute: int = 10
 
-    # Supabase（阶段4 用户系统启用；现在可留空）
+    # Supabase（阶段4 用户系统）
     supabase_url: str = ""
     supabase_service_role_key: str = ""
+    # 本地验签 JWT：HS256 用此密钥；RS256 走 JWKS 缓存，无需配置
+    supabase_jwt_secret: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
