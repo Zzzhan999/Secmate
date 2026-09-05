@@ -110,3 +110,18 @@ alter table public.subscriptions enable row level security;
 alter table public.orders enable row level security;
 alter table public.prompts enable row level security;
 alter table public.shared_links enable row level security;
+
+-- ========== 9. 配额原子扣减 RPC（阶段4）：未超限则 +1 并返回新计数；超限返回空结果 ==========
+create or replace function public.check_and_increment_usage(p_user_id uuid, p_limit int)
+returns int
+language sql
+security definer set search_path = public
+as $$
+  insert into public.daily_usage (user_id, usage_date, count)
+  values (p_user_id, current_date, 1)
+  on conflict (user_id, usage_date)
+  do update set count = public.daily_usage.count + 1
+  where public.daily_usage.count < p_limit
+  returning count;
+$$;
+grant execute on function public.check_and_increment_usage(uuid, int) to service_role;
