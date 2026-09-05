@@ -1431,7 +1431,7 @@ def test_list_history_with_has_more(logged_in, monkeypatch):
     async def fake_select(table, *, select_fields="*", params=None, http_client=None):
         captured["table"] = table
         captured["params"] = params
-        return [dict(ROW, id=i) for i in range(11)]  # 多取 1 条 → has_more=True
+        return [dict(ROW, id=i) for i in range(1, 12)]  # 多取 1 条 → has_more=True
 
     monkeypatch.setattr(history_module, "select", fake_select)
 
@@ -1661,13 +1661,13 @@ app.include_router(history.router, prefix="/api/v1")
 
 Run: `cd backend && .venv/Scripts/python.exe -m pytest tests/test_plans_route.py tests/test_user_profile_route.py tests/test_history_route.py -q`
 
-Expected: 10 passed。
+Expected: 9 passed（1 plans + 3 user + 5 history）。
 
 - [ ] **Step 5: 全量回归**
 
 Run: `cd backend && .venv/Scripts/python.exe -m pytest -q`
 
-Expected: 全部通过。
+Expected: 110 passed（101 + 9）。
 
 - [ ] **Step 6: Commit**
 
