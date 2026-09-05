@@ -85,6 +85,7 @@ class SupabaseTokenVerifier:
             audience="authenticated",
             issuer=f"{s.supabase_url.rstrip('/')}/auth/v1",
             options={"require": ["exp", "sub"]},
+            leeway=60,  # 容忍签发方与本机时钟偏差（实测 Supabase 领先本机约 2-3 秒）
         )
 
 

@@ -201,3 +201,16 @@ def test_alg_key_type_mismatch_rejected(monkeypatch):
     forged = ".".join([_b64u(json.dumps({"alg": "RS256", "typ": "JWT", "kid": "ec-kid"}).encode()), payload, sig])
     with pytest.raises(jwt.PyJWTError):
         asyncio.run(verifier.verify(forged))
+
+
+def test_hs256_fresh_token_within_leeway_passes(configured_hs256):
+    # Supabase 签发时钟略快于本机：新 token 的 iat 会比本机时间早几秒，须用 leeway 容忍
+    token = jwt.encode(_payload(iat=int(time.time()) + 30), "test-secret", algorithm="HS256")
+    payload = asyncio.run(SupabaseTokenVerifier().verify(token))
+    assert payload["sub"] == "user-123"
+
+
+def test_hs256_too_far_in_future_iat_rejected(configured_hs256):
+    token = jwt.encode(_payload(iat=int(time.time()) + 120), "test-secret", algorithm="HS256")
+    with pytest.raises(jwt.ImmatureSignatureError):
+        asyncio.run(SupabaseTokenVerifier().verify(token))
