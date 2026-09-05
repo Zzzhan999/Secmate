@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     ai_api_key: str = ""
     ai_model: str = "deepseek-chat"
 
+    # 限流：每 IP 每分钟允许的分析请求数
+    rate_limit_per_minute: int = 10
+
     # Supabase（阶段4 用户系统启用；现在可留空）
     supabase_url: str = ""
     supabase_service_role_key: str = ""
