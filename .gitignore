@@ -1,0 +1,30 @@
+# 依赖
+node_modules/
+
+# 构建产物
+.next/
+out/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# 环境变量（密钥不入库，模板文件放行）
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
