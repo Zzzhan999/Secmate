@@ -36,6 +36,8 @@ cp .env.example .env            # 填入 AI_API_KEY（DeepSeek 等）
 uvicorn app.main:app --reload   # http://localhost:8000/api/v1/health
 ```
 
+> 若 8000 端口被占用：`uvicorn app.main:app --reload --port 8001`，并在 `frontend/.env.local` 中设置 `BACKEND_API_URL=http://localhost:8001`。
+
 ### 数据库
 
 1. 创建 [Supabase](https://supabase.com) 项目（免费额度即可）；
@@ -45,6 +47,7 @@ uvicorn app.main:app --reload   # http://localhost:8000/api/v1/health
 
 - 设计与需求（PRD/架构/商业化/路线图）：`docs/superpowers/specs/2026-09-05-secmate-design.md`
 - 各阶段实施计划：`docs/superpowers/plans/`
+- 部署手册（Supabase/DO/Caddy/Vercel）：`docs/deploy.md`
 
 ## 当前进度
 
@@ -52,6 +55,6 @@ uvicorn app.main:app --reload   # http://localhost:8000/api/v1/health
 |------|------|------|
 | 1 | 需求分析 | ✅ 完成 |
 | 2 | 项目结构 | ✅ 完成 |
-| 3 | MVP（首页/分析页/AI 分析 API） | ⏳ 进行中 |
-| 4 | 商业化（用户/会员/支付预留） | 未开始 |
+| 3 | MVP（首页/分析页/AI 分析 API） | ✅ 完成（2026-09-05） |
+| 4 | 商业化（用户/会员/支付预留） | ⏳ 下一阶段 |
 | 5 | 优化（历史/收藏/分享/SEO/统计） | 未开始 |
