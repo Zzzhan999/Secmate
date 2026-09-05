@@ -9,6 +9,7 @@ from starlette.requests import Request
 
 from app.api.deps import get_optional_user, require_user
 from app.core.config import get_settings
+from app.core.security import reset_verifier
 
 ISSUER = "https://xyzcompany.supabase.co/auth/v1"
 
@@ -81,8 +82,17 @@ def test_require_user_with_valid_token(monkeypatch):
     assert user.id == "user-123"
 
 
+def test_require_user_with_invalid_token_401():
+    # 带 token 但无效：必须走 invalid_token（401），而非 unauthorized
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(require_user(make_request("Bearer not-a-jwt")))
+    assert exc.value.status_code == 401
+    assert exc.value.detail["code"] == "invalid_token"
+
+
 def test_token_when_supabase_unconfigured_503():
     # conftest 已清空 Supabase 配置：带 RS256 token 无法拉取 JWKS → 503
+    reset_verifier()  # 防其他测试污染全局验签器缓存，保证与执行顺序无关
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     token = jwt.encode(_payload(), key, algorithm="RS256", headers={"kid": "k"})
     with pytest.raises(HTTPException) as exc:
