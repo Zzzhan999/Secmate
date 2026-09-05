@@ -14,7 +14,9 @@ export async function GET(
   { params }: { params: { path: string[] } },
 ) {
   const path = params.path.join("/");
-  const allowed = ALLOWED_PREFIXES.some(
+  // 拒绝点段与编码斜杠绕过：%2F 会被 Next 解码进参数，防止 .. 越出白名单前缀
+  const badSeg = path.split("/").some((seg) => seg === "." || seg === ".." || seg === "");
+  const allowed = !badSeg && ALLOWED_PREFIXES.some(
     (p) => path === p || path.startsWith(`${p}/`),
   );
   if (!allowed) {
