@@ -449,13 +449,19 @@ async def verify_supabase_token(token: str) -> dict:
 
 Run: `cd backend && .venv/Scripts/python.exe -m pytest tests/test_security.py -q`
 
-Expected: 13 passed（测试函数实际为 13 个）。
+Expected: 15 passed。
 
 - [ ] **Step 5: 全量回归**
 
 Run: `cd backend && .venv/Scripts/python.exe -m pytest -q`
 
-Expected: 全部通过（71 个）。
+Expected: 全部通过（73 个）。
+
+> **实施记录（代码质量审查驱动的修订，commit 5f85357）：** 计划原版代码有两处安全缺陷，已按审查结论修订：
+> 1. `_key_for` 改为返回 `jwt.PyJWK` 对象而非裸 key——alg 与密钥类型不匹配时抛 `InvalidAlgorithmError`（PyJWTError→401），避免裸 TypeError 穿透成 500。
+> 2. 未知 kid 不再无条件刷新 JWKS：新增 `REFRESH_MIN_INTERVAL=60s` 最小刷新间隔防拉取放大；缓存新鲜时未知 kid 直接抛 `jwt.InvalidKeyError`（401 语义）。
+> 3. `_fetch_jwks` 将 `jwt.PyJWK(k)` 构造异常包装为 `JwksError`。
+> 测试相应增补 `test_jwks_kid_miss_within_interval_does_not_refetch` 与 `test_alg_key_type_mismatch_rejected`，共 15 个。
 
 - [ ] **Step 6: Commit**
 
