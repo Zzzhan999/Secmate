@@ -15,14 +15,23 @@ create table if not exists public.profiles (
 );
 
 -- 新用户注册时自动创建档案（Supabase 官方推荐模式）
+-- 用户名撞车时加数字后缀（如 admin、admin2），保证 profile 行始终创建成功
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  base_name text := coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1));
+  uname text := base_name;
+  suffix int := 1;
 begin
+  while exists (select 1 from public.profiles where username = uname) loop
+    suffix := suffix + 1;
+    uname := base_name || suffix::text;
+  end loop;
   insert into public.profiles (id, username)
-  values (new.id, coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)))
+  values (new.id, uname)
   on conflict (id) do nothing;
   return new;
 end;

@@ -70,6 +70,7 @@ export function AnalyzeClient() {
   const handleStop = () => {
     abortRef.current?.abort();
     setStatus("done");
+    notifyQuotaRefresh(); // 配额已在流开始前扣减，停止生成同样需要刷新徽章
   };
 
   return (

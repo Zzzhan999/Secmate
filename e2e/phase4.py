@@ -18,11 +18,11 @@ with sync_playwright() as p:
     page.get_by_placeholder("至少 8 位").fill(PASSWORD)
     page.get_by_role("button", name="注册", exact=True).click()
     page.wait_for_url("**/analyze", timeout=20000)
-    print("[1/6] 注册并跳转分析页 OK")
+    print("[1/7] 注册并跳转分析页 OK")
 
     # 2. header 显示配额徽章
     page.wait_for_selector("text=今日剩余", timeout=15000)
-    print("[2/6] 配额徽章显示 OK")
+    print("[2/7] 配额徽章显示 OK")
 
     def run_analysis(wait_done: bool):
         page.goto(f"{BASE}/analyze")
@@ -48,7 +48,7 @@ with sync_playwright() as p:
     run_analysis(wait_done=False)
     run_analysis(wait_done=False)
     run_analysis(wait_done=False)
-    print("[3/6] 5 次分析已消耗配额 OK")
+    print("[3/7] 5 次分析已消耗配额 OK")
 
     # 4. 第 6 次：出现升级引导卡片
     page.goto(f"{BASE}/analyze")
@@ -56,16 +56,16 @@ with sync_playwright() as p:
     page.get_by_role("textbox").fill("什么是 SQL 注入？")
     page.get_by_role("button", name="开始分析").click()
     page.wait_for_selector("text=今日免费额度已用完", timeout=15000)
-    print("[4/6] 第 6 次触发升级卡片 OK")
+    print("[4/7] 第 6 次触发升级卡片 OK")
 
     # 5. 历史列表与详情
     page.goto(f"{BASE}/history")
     page.wait_for_load_state("networkidle")
     page.wait_for_selector("a[href^='/history/']", timeout=15000)
-    print("[5/6] 历史列表有记录 OK")
+    print("[5/7] 历史列表有记录 OK")
     page.locator("a[href^='/history/']").first.click()
     page.wait_for_selector("text=分析结果", timeout=15000)
-    print("[6/6] 历史详情渲染 OK")
+    print("[6/7] 历史详情渲染 OK")
 
     # 6. 退出登录回匿名态
     page.goto(f"{BASE}/analyze")

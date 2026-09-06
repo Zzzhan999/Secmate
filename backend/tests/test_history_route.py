@@ -50,7 +50,7 @@ def test_list_history_with_has_more(logged_in, monkeypatch):
     assert "tokens_out" in first and "created_at" in first
     assert captured["table"] == "analyses"
     assert captured["params"]["user_id"] == "eq.u1"
-    assert captured["params"]["order"] == "created_at.desc"
+    assert captured["params"]["order"] == "created_at.desc,id.desc"
     assert captured["params"]["limit"] == "11"
     assert captured["params"]["offset"] == "0"
 

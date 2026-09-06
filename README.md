@@ -69,4 +69,6 @@ uvicorn app.main:app --reload   # http://localhost:8000/api/v1/health
 
 **上线前需在 Supabase 完成：** SQL Editor 执行 `database/schema.sql`；Authentication → Email → 关闭 Confirm email。
 
+**已部署环境的迁移：** 若 schema.sql 在 2026-09-05 后更新过（`handle_new_user` 用户名去重修复），需在 SQL Editor 重新执行该函数所在段落（`create or replace function ... handle_new_user()`，幂等可重复执行）。
+
 **新环境变量：** 后端 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_JWT_SECRET`；前端 `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`。

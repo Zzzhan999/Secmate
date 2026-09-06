@@ -132,6 +132,11 @@ export async function streamAnalysis(
   });
 
   if (!resp.ok) {
+    if (resp.status === 401) {
+      // 与 fetchJson 一致：登录已过期则清除会话，交由页面跳转 /login
+      await supabase?.auth.signOut();
+      throw new ApiError("invalid_token", "登录已过期，请重新登录。");
+    }
     let code = "unknown";
     let message = `请求失败（HTTP ${resp.status}）`;
     try {

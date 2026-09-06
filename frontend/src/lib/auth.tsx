@@ -22,12 +22,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     let cancelled = false;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled) {
-        setSession(data.session);
-        setLoading(false);
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!cancelled) setSession(data.session);
+      })
+      .catch(() => {
+        // Supabase 配置了但不可达：按未登录继续，避免永久卡加载态
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       if (!cancelled) setSession(s);
     });

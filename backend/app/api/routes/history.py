@@ -22,7 +22,7 @@ async def list_history(
             select_fields=_LIST_FIELDS,
             params={
                 "user_id": f"eq.{user.id}",
-                "order": "created_at.desc",
+                "order": "created_at.desc,id.desc",
                 "limit": str(page_size + 1),
                 "offset": str((page - 1) * page_size),
             },
