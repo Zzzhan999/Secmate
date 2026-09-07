@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
 
-    # CORS：逗号分隔的多个来源，如 "http://localhost:3000,https://secmate.app"
+    # CORS：JSON 数组格式，如 ["http://localhost:3000","https://secmate.app"]
     cors_origins: list[str] = ["http://localhost:3000"]
 
     # AI Provider：openai_compat 一套协议覆盖 DeepSeek / OpenAI / Ollama(/v1)
